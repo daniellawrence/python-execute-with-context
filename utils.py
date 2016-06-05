@@ -3,8 +3,6 @@ import time
 
 import jinja2
 
-_instance = None
-
 DEFAULT_WEIGHT = 1
 DEFAULT_MAX_GRADE = 'A+'
 DEFUALT_DOC_STRING = ''
@@ -64,23 +62,17 @@ class Context(object):
         return expand_dict(self.__dict__)
 
 
-class Singleton(object):
-
-    def __new__(class_, *args, **kwargs):
-        global _instance
-        if not isinstance(_instance, class_):
-            _instance = object.__new__(class_, *args, **kwargs)
-        return _instance
-
-
-class CheckMaker(Singleton):
+class CheckMaker(object):
     all_plugins = []
     weights = {}
     grade_limits = {}
     function_tags = {}
+    _instance = None
 
-    def __init__(self):
-        self = _instance  # noqa
+    def __new__(class_, *args, **kwargs):
+        if not isinstance(class_._instance, class_):
+            class_._instance = object.__new__(class_, *args, **kwargs)
+        return class_._instance
 
     def result(self, *args, **kwargs):
         r = ExecutionResult(*args, **kwargs)
