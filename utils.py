@@ -1,4 +1,3 @@
-import collections
 import operator
 import os
 import time
@@ -36,7 +35,9 @@ def score_to_grade(lookup_score):
 
 
 def max_score_from_max_grade(lookup_grade):
-    return score_map.get(lookup_grade, 100)
+    if lookup_grade == 'F':
+        return 60
+    return score_map.get(lookup_grade, 97) + 3
 
 
 def expand_dict(d):
@@ -62,10 +63,24 @@ class ExecutionResult(object):
         self.message = message
 
     def __repr__(self):
-        return "<ExecutionResult {}>".format(id(self))
+        f_name = self.meta.get('function', {}).get('name')
+        result = self.result
+        if not f_name:
+            f_name = id(self)
+
+        return "<ExecutionResult {}:{}>".format(f_name, result)
 
     def __str__(self):
         return "result={} message={}".format(self.result, self.message)
+
+    @property
+    def score_limit(self):
+        max_score = self.meta.get('max_score_if_fail', 100)
+        return max_score
+
+    @property
+    def weight(self):
+        return self.meta.get('weight', 1)
 
     @property
     def to_dict(self):
@@ -139,6 +154,9 @@ class CheckMaker(object):
     def plugin_info(self, plugin):
         """ static information about a plugin """
         f_name = plugin.__name__
+        max_grade_if_fail = self.grade_limits.get(f_name, DEFAULT_MAX_GRADE)
+        max_score_if_fail = max_score_from_max_grade(max_grade_if_fail)
+        weight = self.weights.get(f_name, DEFAULT_WEIGHT)
 
         # metadata
         meta = {
@@ -147,8 +165,9 @@ class CheckMaker(object):
                 'doc': plugin.__doc__ or '',
                 'filename': plugin.__code__.co_filename
             },
-            'weight': self.weights.get(f_name, DEFAULT_WEIGHT),
-            'max_grade_if_fail': self.grade_limits.get(f_name, DEFAULT_WEIGHT),
+            'weight': weight,
+            'max_grade_if_fail': max_grade_if_fail,
+            'max_score_if_fail': max_score_if_fail,
             'tags': self.function_tags.get(f_name, [])
         }
         return meta
@@ -187,6 +206,7 @@ class CheckMaker(object):
         # add a metadata set into the result set
         result.meta = self.plugin_info(plugin)
         raw_doc = result.meta.get('function', {}).get('doc', '')
+        weight = result.meta.get('weight')
 
         meta = {
             'ctx': ctx,
@@ -196,6 +216,10 @@ class CheckMaker(object):
                 'length': execute_finish - execute_start
             },
         }
+
+        result.score = 0
+        if result.result is True:
+            result.score = weight
 
         # apply generic plugin_info data into the meta data
         # that we have collected at run time.
