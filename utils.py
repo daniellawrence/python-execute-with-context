@@ -26,6 +26,55 @@ score_map = {
 }
 
 
+class CheckGroup(object):
+
+    def __init__(self, checker):
+        self.checker = checker
+        self.checks = checker.all_plugins
+        ctx_dict = {
+            'foo': 'bar'
+        }
+        self.ctx = Context(**ctx_dict)
+        self.results = []
+
+    def execute_checks(self):
+        for check in self.checks:
+            r = self.checker.execute_plugin(check, self.ctx)
+            print "{:<20} {:<30} {:.5f}ms".format(
+                r.meta.get('function', {}).get('name'),
+                r,
+                r.meta.get('time').get('length')
+            )
+
+            self.results.append(r)
+        return self.results
+
+    def calculate_score(self):
+        max_score = 100
+        possible_score = 0
+        current_score = 0
+        adjusted_score = 0
+
+        for r in self.results:
+            if max_score > r.score_limit:
+                max_score = r.score_limit
+
+            possible_score += r.weight
+            current_score += r.score
+            weighted_score = int((float(current_score) / possible_score) * 100)
+
+        adjusted_score = weighted_score
+        if weighted_score > max_score:
+            adjusted_score = max_score
+
+        return adjusted_score
+
+    def calculate_grade(self):
+        score = self.calculate_score()
+        grade = score_to_grade(score)
+        return grade
+
+
 def score_to_grade(lookup_score):
 
     for grade, score in sorted(score_map.items(), key=operator.itemgetter(1)):
