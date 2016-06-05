@@ -1,3 +1,5 @@
+import collections
+import operator
 import os
 import time
 
@@ -6,6 +8,35 @@ import jinja2
 DEFAULT_WEIGHT = 1
 DEFAULT_MAX_GRADE = 'A+'
 DEFUALT_DOC_STRING = ''
+
+
+score_map = {
+    'A+': 97,
+    'A': 93,
+    'A-': 90,
+    'B+': 87,
+    'B': 83,
+    'B-': 80,
+    'C+': 77,
+    'C': 73,
+    'C-': 70,
+    'D+': 67,
+    'D': 63,
+    'D-': 60,
+    'F': 59
+}
+
+
+def score_to_grade(lookup_score):
+
+    for grade, score in sorted(score_map.items(), key=operator.itemgetter(1)):
+        if lookup_score <= score:
+            return grade
+    return 'A+'
+
+
+def max_score_from_max_grade(lookup_grade):
+    return score_map.get(lookup_grade, 100)
 
 
 def expand_dict(d):
